@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <numeric>
 #include <stdexcept>
+#include <mutex>
+#include <future>
 
 
 
@@ -204,6 +206,7 @@ class MessageProcessor
 {
 private:
     std::shared_ptr<MatchingEngineI>  m_matchingEngineI;
+    std::mutex                        m_mutex_for_engine;
 
 public:
     /// <summary>
@@ -256,7 +259,7 @@ public:
     /// <summary>
     /// listen to message, and invoke appropriate matching engine actions
     /// </summary>
-    void listenToMessage(std::istream& is) const;
+    void listenToMessage(std::istream& is);
 
 };
 
@@ -705,7 +708,7 @@ bool MessageProcessor::getOrderIdFromToken(std::string& token,
 }
 
 
-void MessageProcessor::listenToMessage(std::istream& is) const
+void MessageProcessor::listenToMessage(std::istream& is)
 {
     std::string line;
     while (getline(is, line)) {
@@ -746,8 +749,17 @@ void MessageProcessor::listenToMessage(std::istream& is) const
                 if (!success) {
                     continue;
                 }
-
-                m_matchingEngineI->processOrder(orderType, orderSide, price, quantity, orderId);
+                {
+                    std::unique_lock<std::mutex> locker(m_mutex_for_engine);
+                    
+                    std::async(&MatchingEngineI::processOrder,
+                               m_matchingEngineI,
+                               orderType,
+                               orderSide,
+                               price,
+                               quantity,
+                               orderId);
+                }
             }
 
             // CANCEL
@@ -762,8 +774,13 @@ void MessageProcessor::listenToMessage(std::istream& is) const
                 if (!success) {
                     continue;
                 }
+                {
+                    std::unique_lock<std::mutex> locker(m_mutex_for_engine);
 
-                m_matchingEngineI->cancelOrder(orderId);
+                    std::async(&MatchingEngineI::cancelOrder,
+                               m_matchingEngineI,
+                               orderId);
+                }
             }
 
             // MODIFY
@@ -793,13 +810,24 @@ void MessageProcessor::listenToMessage(std::istream& is) const
                 if (!success) {
                     continue;
                 }
-                
-                m_matchingEngineI->modifyOrder(orderId, newOrderSide, newPrice, newQuantity);
+                {
+                    std::unique_lock<std::mutex> locker(m_mutex_for_engine);
+                    
+                    std::async(&MatchingEngineI::modifyOrder,
+                               m_matchingEngineI,
+                               orderId,
+                               newOrderSide,
+                               newPrice,
+                               newQuantity);
+                }
             }
 
             // PRINT
             if (tokens[0] == "PRINT") {
-                m_matchingEngineI->print();
+                std::unique_lock<std::mutex> locker(m_mutex_for_engine);
+
+                std::async(&MatchingEngineI::print,
+                           m_matchingEngineI);
             }
         }
     }
