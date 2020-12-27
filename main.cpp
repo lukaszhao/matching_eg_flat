@@ -84,8 +84,6 @@ public:
         Quantity quantity,
         const OrderId& orderId) = 0;
 
-    virtual void purgeEngine() = 0;
-
     virtual void cancelOrder(const OrderId& orderId) = 0;
 
     virtual void modifyOrder(const OrderId& orderId,
@@ -110,7 +108,8 @@ public:
     void print() const;
 
     /// <summary>
-    /// process order, trade order against queued orders, update queued orders,
+    /// process order BUY or SELL; trade order against queued orders,
+    /// update queued orders (if queued order is completely traded delete it),
     /// and add the remaining untraded part to engine
     /// </summary>
     void processOrder(OrderType orderType,
@@ -118,11 +117,6 @@ public:
         Price price,
         Quantity quantity,
         const OrderId& orderId);
-
-    /// <summary>
-    /// purge mathing engine, delete all queued orders
-    /// </summary>
-    void purgeEngine();
 
     /// <summary>
     /// cancel order, remove order from engine; if orderId doesn't exist, no op
@@ -267,8 +261,8 @@ public:
 };
 
 
-
 // cpp files ////////////////////////////////////////////////
+
 
             // -----------
             // class Order
@@ -527,14 +521,6 @@ void MatchingEngine::processOrder(OrderType orderType,
 }
 
 
-void MatchingEngine::purgeEngine()
-{
-    m_orderIdToOrder.clear();
-    m_priceMapBuy.clear();
-    m_priceMapSell.clear();
-}
-
-
 void MatchingEngine::eraseOrderFromPriceMap(PriceMap& priceMap,
     Price price,
     const OrderId& orderId)
@@ -721,15 +707,8 @@ bool MessageProcessor::getOrderIdFromToken(std::string& token,
 
 void MessageProcessor::listenToMessage(std::istream& is) const
 {
-    
-    while (true) {
-        std::string line;
-        getline(is, line, '\n');
-        
-        if(line.empty()) {
-            // that is the end
-            return;
-        }
+    std::string line;
+    while (getline(is, line)) {
         
         std::vector<std::string> tokens = tokenizeMessage(line);
 
@@ -829,31 +808,15 @@ void MessageProcessor::listenToMessage(std::istream& is) const
 } // namespace matchingengine
 
 
-
-
 ///////////////////////////////////////////////////////
-
-
-void checkWhatIsInputLike() {
-    while (true) {
-        std::string line;
-        std::getline(std::cin, line);
-        std::cout << "\nline = " << line << "\n\n\n";
-    }
-}
-
-
-void run() {
-    using namespace matchingengine;
-    MessageProcessor messageProcessor(std::make_shared<MatchingEngine>());
-    messageProcessor.listenToMessage(std::cin);
-}
 
 
 int main()
 {
-    run();
-    //checkWhatIsInputLike();
+    using namespace matchingengine;
+    
+    MessageProcessor messageProcessor(std::make_shared<MatchingEngine>());
+    messageProcessor.listenToMessage(std::cin);
 
     return 0;
 }
