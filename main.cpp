@@ -601,7 +601,6 @@ void MatchingEngine::modifyOrder(const OrderId& orderId,
     OrderSide oldOrderSide = order->m_orderSide;
     Price oldPrice = order->m_price;
     
-
     order->m_price = newPrice;
     order->m_quantity = newQuantity;
     order->m_orderSide = newOrderSide;
@@ -722,10 +721,11 @@ bool MessageProcessor::getOrderIdFromToken(std::string& token,
 
 void MessageProcessor::listenToMessage(std::istream& is) const
 {
-    std::string line;
+    
     while (true) {
+        std::string line;
         getline(is, line, '\n');
-
+        
         if(line.empty()) {
             // that is the end
             return;
@@ -830,11 +830,30 @@ void MessageProcessor::listenToMessage(std::istream& is) const
 
 
 
-int main()
-{
+
+///////////////////////////////////////////////////////
+
+
+void checkWhatIsInputLike() {
+    while (true) {
+        std::string line;
+        std::getline(std::cin, line);
+        std::cout << "\nline = " << line << "\n\n\n";
+    }
+}
+
+
+void run() {
     using namespace matchingengine;
     MessageProcessor messageProcessor(std::make_shared<MatchingEngine>());
     messageProcessor.listenToMessage(std::cin);
+}
+
+
+int main()
+{
+    run();
+    //checkWhatIsInputLike();
 
     return 0;
 }
