@@ -254,7 +254,7 @@ public:
         OrderId& orderId);
 
     /// <summary>
-    /// listen to message, and parse message
+    /// listen to message, and invoke appropriate matching engine actions
     /// </summary>
     void listenToMessage(std::istream& is) const;
 
